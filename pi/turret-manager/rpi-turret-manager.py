@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env /usr/bin/python3
 
 # This Python program is the main Rpi control program for the turret
 
@@ -16,6 +16,10 @@ from colorama import Style
 from SimpleWebSocketServer import SimpleWebSocketServer
 from SimpleWebSocketServer import WebSocket
 
+# TODO: replace hardcoded values with config values
+sys.path.append('/etc/terror-turret')
+from config import TURRET_CONFIG
+
 CMD_FIRE = 0x21
 CMD_STOP_FIRE = 0x22
 CMD_SAFETY_ON = 0x23
@@ -28,9 +32,9 @@ CMD_PITCH_DOWN_MAX = 0x3B
 CMD_PITCH_ZERO = 0x45
 CMD_PITCH_UP_MAX = 0x4F
 
-SERIAL_BAUD_RATE = 9600
+SERIAL_BAUD_RATE = TURRET_CONFIG['baudrate'] #9600
 
-turretSerialPort = 'COM1'
+turretSerialPort = TURRET_CONFIG['serialPort'] #'COM1'
 
 arduinoSerialConn = serial.Serial()
 
@@ -179,7 +183,7 @@ def initIncomingCommandsServer():
     # TODO determine the port to use dynamically
     # TODO decide how to deconflict this port from the video stream port
     print("Initializing incoming commands server...\n")
-    port = 9001
+    port = TURRET_CONFIG['commandServerPort'] # default is 9001
     commandServer = SimpleWebSocketServer('', port, TurretCommandServer)
     commandServer.serveforever()
 
