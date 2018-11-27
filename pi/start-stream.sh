@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env /bin/bash
 
 # This file contains a simple script to start the UV4L video stream
 
@@ -11,7 +11,7 @@ sleep 3
 echo "Starting UV4L server on port 9000..."
 uv4l --driver uvc \
 	--config-file "./uv4l-config.conf" \
-	--driver-config-file "uv4l-config.conf"
+	--driver-config-file "./uv4l-config.conf"
 	
 echo -e "\nTurret stream *should* be up and running!\n"
 

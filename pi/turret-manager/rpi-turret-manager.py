@@ -68,13 +68,13 @@ def parseCommandLineArguments():
     programDescription = "Main control software for the Terror Turret."
     parser = argparse.ArgumentParser(description = programDescription)
     parser.add_argument(
-        '--test-mode',
+        '-t', '--test-mode',
         type = bool,
         default = False,
         dest = 'testMode',
         help = "Runs the test script instead of normal program")
     parser.add_argument(
-        '--serial-port',
+        '-p', '--serial-port',
         default = 'COM1',
         dest = 'serialPort',
         help = "The name of the serial port to connect from.")

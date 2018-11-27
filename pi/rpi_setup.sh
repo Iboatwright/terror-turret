@@ -1,8 +1,13 @@
-#!/usr/bin/env bash
+#!/usr/bin/env /bin/bash
 
 # This script sets up the Raspberry Pi 3B+ as needed for our project
 
 starttime=$(date +%s)
+OS_VERSION=${cat /etc/os-release | grep 'VERSION=' | awk -F'[(|)]' '{print $2}'}
+BASE_PACKAGES="git python-pip"
+UV4L_PACKAGES="uv4l uv4l-raspicam uv4l-raspicam uv4l-decoder uv4l-encoder"\
+              "uv4l-renderer uv4l-mjpegstream uv4l-server uv4l-webrtc"\
+              "uv4l-demos uv4l-uvc"
 
 # Colors that can be used in the output
 OUTPUT_RED='\033[0;31m'
@@ -45,27 +50,11 @@ success() {
 printf "\nNow setting up RPi 3B+ for use with Terror-Turret...\n\n"
 sleep 1s
 
-# First make sure the user is root so we can do what we need to
-echo "Ensuring you have root privileges..."
-if [[ $EUID != 0 ]]
-then
-  exiterror "This script must be run as root. Please re-run with sudo."
-fi
+echo "Installing system updates..."
+sudo apt update && sudo apt upgrade -y || exiterror "apt failed to update and upgrade."
+echo "Installing git and pip if needed..."
+sudo apt install $BASE_PACKAGES -y || exiterror "apt failed to install $BASE_PACKAGES."
 
-echo "Installing needed packages..."
-sudo apt-get update || exiterror "Failed to run apt-get update."
-sudo apt-get upgrade || exiterror "Failed to run apt-get upgrade."
-echo "Installing Arduino IDE..."
-sudo apt-get install arduino || exiterror
-echo "Installing Git..."
-sudo apt-get install git || exiterror
-echo "Installing Vim..."
-sudo apt-get install vim || exiterror
-echo "Installing fswebcam..."
-sudo apt-get install fswebcam || exiterror
-
-echo -e "\nInstalling pip package manager for Python..."
-sudo apt-get install python-pip || exiterror
 echo "Installing needed Python packages..."
 echo "Installing pyserial..."
 sudo pip3 install pyserial || exiterror
@@ -75,24 +64,29 @@ echo "Installing SimpleWebsocketServer for Python..."
 sudo pip3 install git+https://github.com/dpallot/simple-websocket-server.git || exiterror
 
 echo -e "\nInstalling UV4L..."
-curl http://www.linux-projects.org/listing/uv4l_repo/lpkey.asc | sudo apt-key add -
-echo "deb http://www.linux-projects.org/listing/uv4l_repo/raspbian/stretch stretch main" | sudo tee -a /etc/apt/sources.list
-sudo apt-get install uv4l || exiterror
-sudo apt-get install uv4l-raspicam || exiterror
-sudo apt-get install uv4l-raspicam-extras || exiterror
-sudo apt-get install uv4l-decoder || exiterror
-sudo apt-get install uv4l-encoder || exiterror
-sudo apt-get install uv4l-renderer || exiterror
-sudo apt-get install uv4l-mjpegstream || exiterror
-sudo apt-get install uv4l-server || exiterror
-sudo apt-get install uv4l-webrtc || exiterror
-sudo apt-get install uv4l-demos || exiterror
-sudo apt-get install uv4l-uvc || exiterror
+curl http://www.linux-projects.org/listing/uv4l_repo/lpkey.asc | apt-key add -
+echo "deb http://www.linux-projects.org/listing/uv4l_repo/raspbian/stretch stretch main" | tee -a /etc/apt/sources.list
+sudo apt install $UV4L_PACKAGES -y || exiterror
 
 echo -e "Finished installing all needed packages.\n"
 
 echo -e "\n Cloning project code from github..."
-sudo mkdir -p code
-sudo git clone https://www.github.com/maillouxc/terror-turret.git ./code/terror-turret
+sudo mkdir /usr/share/doc/terror-turret
+sudo mkdir /etc/terror-turret
+mkdir /tmp/code
+git clone https://www.github.com/maillouxc/terror-turret.git /tmp/code/terror-turret
+cp /tmp/code/terror-turret/docs /usr/share/doc/terror-turret
+cp /tmp/code/terror-turret/pi/config.py /etc/terror-turret
+cp /tmp/code/terror-turret/pi/start-stream.sh /etc/terror-turret
+cp /tmp/code/terror-turret/pi/uv4l-config.conf /etc/terror-turret
+cp /tmp/code/terror-turret/pi/terror-turret-loader.sh /etc/terror-turret
+cp /tmp/code/terror-turret/pi/turret-manager/rpi-turret-manager.py /etc/terror-turret
+sudo cp /tmp/code/terror-turret/pi/terror-turret.service /etc/systemd/system
+sudo chmod 644 /etc/systemd/system/terror-turret.service
+chmod +x /etc/terror-turret/start-stream.sh
+chmod +x /etc/terror-turret/terror-turret-loader.sh
+#sudo systemctrl daemon-reload
+#sudo systemctrl enable terror-turret.service
+#sudo systemctrl start terror-turret.service
 
 success

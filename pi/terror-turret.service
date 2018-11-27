@@ -1,0 +1,11 @@
+[Unit]
+Description=Terror-Turret
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/bin/bash /etc/terror-turret/terror-turret-loader.sh
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
