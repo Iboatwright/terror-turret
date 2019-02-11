@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 
 # This Python program is the main Rpi control program for the turret
 
@@ -44,7 +44,8 @@ def main():
     colorama.init()
     parseCommandLineArguments()
     print("\nTurret manager software started.\n")
-    establishConnectionToTurret()
+    if (not noTurret):
+        establishConnectionToTurret()
 
     loggingThread = Thread(target = SerialLoggingThread)
     loggingThread.start()
@@ -64,16 +65,22 @@ def parseCommandLineArguments():
     programDescription = "Main control software for the Terror Turret."
     parser = argparse.ArgumentParser(description = programDescription)
     parser.add_argument(
-        '--test-mode',
-        type = bool,
-        default = False,
+        '-t', '--test-mode',
+        action = 'store_true',
         dest = 'testMode',
         help = "Runs the test script instead of normal program")
     parser.add_argument(
-        '--serial-port',
+        '-p', '--serial-port',
+        action = 'store_const',
+        const='COM1',
         default = 'COM1',
         dest = 'serialPort',
         help = "The name of the serial port to connect from.")
+    parser.add_argument(
+        '-n', '--noTurret',
+        action = 'store_true',
+        dest = 'noTurret',
+        help = "Runs without creating a serial connection.")
 
     # It pains me to use 'global' here - we need to refactor this when we can
     parsedArgs = parser.parse_args()
@@ -81,6 +88,8 @@ def parseCommandLineArguments():
     testMode = parsedArgs.testMode
     global turretSerialPort
     turretSerialPort = parsedArgs.serialPort
+    global noTurret
+    noTurret = parsedArgs.noTurret
 
 
 def cleanup():
@@ -118,7 +127,8 @@ def establishConnectionToTurret():
 
 def commandTurret(command):
     print("Sending command: " + hex(command))
-    arduinoSerialConn.write(chr(command).encode())
+    if (not noTurret):
+        arduinoSerialConn.write(chr(command).encode())
     
 
 def testTurretCommands():
