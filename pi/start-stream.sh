@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 # This file contains a simple script to start the UV4L video stream
 
