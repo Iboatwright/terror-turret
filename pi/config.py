@@ -1,5 +1,5 @@
 TURRET_CONFIG = {
   'baudrate': 9600,
-  'serialPort': 'COM1',
+  'serialPort': '/dev/ttyUSB0',
   'commandServerPort': 9001
 }

@@ -75,7 +75,7 @@ def parseCommandLineArguments():
         help = "Runs the test script instead of normal program")
     parser.add_argument(
         '-p', '--serial-port',
-        default = 'COM1',
+        default = '/dev/ttyUSB0',
         dest = 'serialPort',
         help = "The name of the serial port to connect from.")
 
