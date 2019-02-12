@@ -10,9 +10,9 @@ sleep 3
 
 echo "Starting UV4L server on port 9000..."
 uv4l --driver uvc \
-	--config-file "./uv4l-config.conf" \
-	--driver-config-file "uv4l-config.conf"
-	
+  --config-file "./uv4l-config.conf" \
+  --driver-config-file "uv4l-config.conf"
+
 echo -e "\nTurret stream *should* be up and running!\n"
 
 echo "If the device name just printed above isn't /dev/video0, it didn't work."
