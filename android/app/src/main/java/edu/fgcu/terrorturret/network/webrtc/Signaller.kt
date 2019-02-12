@@ -56,7 +56,7 @@ class Signaller(
                 .addInterceptor(loggingInterceptor)
                 .build()
 
-        val webSocketUrl = "ws://$signallingIp:$signallingPort/webrtc"
+        val webSocketUrl = "wss://$signallingIp:$signallingPort/stream/webrtc"
         val webSocketRequest = Request.Builder()
                 .url(webSocketUrl)
                 .build()

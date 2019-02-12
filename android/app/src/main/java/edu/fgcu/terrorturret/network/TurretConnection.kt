@@ -33,7 +33,7 @@ object TurretConnection {
         val webSocketPort = turretPort + 1
 
         val webSocketRequest = Request.Builder()
-                .url("ws://$turretIp:$webSocketPort/")
+                .url("wss://$turretIp:$webSocketPort/")
                 .build()
 
         webSocket = okHttpClient.newWebSocket(webSocketRequest, webSocketListener)
