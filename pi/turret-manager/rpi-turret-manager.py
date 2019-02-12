@@ -3,7 +3,10 @@
 # This Python program is the main Rpi control program for the turret
 
 # TODO - a modularizing refactor of this program - this is a temp hacky mess
+# TODO - add a way to toggle SSL. It's hardcoded now.
+useSSL = True
 
+import os.path
 import sys
 import argparse
 import serial
@@ -13,8 +16,20 @@ from time import sleep
 import colorama
 from colorama import Fore
 from colorama import Style
-from SimpleWebSocketServer import SimpleWebSocketServer
 from SimpleWebSocketServer import WebSocket
+
+if (useSSL is False):
+	from SimpleWebSocketServer import SimpleWebSocketServer
+else:
+	from SimpleWebSocketServer import SimpleSSLWebSocketServer
+
+# TODO: replace hardcoded values with config values
+if os.path.isfile("/etc/terror-turret/turret-manager-config.py"):
+	sys.path.append("/etc/terror-turret")
+from turret-manager-config import TURRET_CONFIG
+
+SERIAL_BAUD_RATE = TURRET_CONFIG['baudrate'] #9600
+turretSerialPort = TURRET_CONFIG['serialPort'] #'ttyUSB0'
 
 CMD_FIRE = 0x21
 CMD_STOP_FIRE = 0x22
@@ -27,10 +42,6 @@ CMD_ROTATE_RIGHT_MAX = 0x3A
 CMD_PITCH_DOWN_MAX = 0x3B
 CMD_PITCH_ZERO = 0x45
 CMD_PITCH_UP_MAX = 0x4F
-
-SERIAL_BAUD_RATE = 9600
-
-turretSerialPort = 'COM1'
 
 arduinoSerialConn = serial.Serial()
 
@@ -72,15 +83,15 @@ def parseCommandLineArguments():
     parser.add_argument(
         '-p', '--serial-port',
         action = 'store_const',
-        const='COM1',
-        default = 'COM1',
+        const = '/dev/ttyUSB0',
+        default = '/dev/ttyUSB0',
         dest = 'serialPort',
         help = "The name of the serial port to connect from.")
     parser.add_argument(
-        '-n', '--noTurret',
-        action = 'store_true',
-        dest = 'noTurret',
-        help = "Runs without creating a serial connection.")
+		'-n', '--noTurret',
+		action = 'store_true',
+		dest = 'noTurret',
+		help = "Runs without creating a serial connection.")
 
     # It pains me to use 'global' here - we need to refactor this when we can
     parsedArgs = parser.parse_args()
@@ -189,10 +200,16 @@ def initIncomingCommandsServer():
     # TODO determine the port to use dynamically
     # TODO decide how to deconflict this port from the video stream port
     print("Initializing incoming commands server...\n")
-    port = 9001
-    commandServer = SimpleWebSocketServer('', port, TurretCommandServer)
-    commandServer.serveforever()
-
+    port = TURRET_CONFIG['commandServerPort'] # default is 9001
+	
+	if (useSSL is False):
+		commandServer = SimpleWebSocketServer('', port, TurretCommandServer)
+	else:
+		certFile=TURRET_CONFIG['certFile']
+		keyFile=TURRET_CONFIG['keyFile']
+		commandServer = SimpleSSLWebSocketServer('', port, TurretCommandServer, certfile=certFile, keyfile=keyFile)
+ 
+	commandServer.serveforever()
 
 def crash(reason):
     print(Fore.RED + reason + Style.RESET_ALL)
