@@ -24,9 +24,9 @@ else:
   from SimpleWebSocketServer import SimpleSSLWebSocketServer
 
 # TODO: replace hardcoded values with config values
-if os.path.isfile("/etc/terror-turret/turret-manager-config.py"):
+if os.path.isfile("/etc/terror-turret/turretManagerConfig.py"):
   sys.path.append("/etc/terror-turret")
-from turret-manager-config import TURRET_CONFIG
+from turretManagerConfig import TURRET_CONFIG
 
 SERIAL_BAUD_RATE = TURRET_CONFIG['baudrate'] #9600
 turretSerialPort = TURRET_CONFIG['serialPort'] #'ttyUSB0'
@@ -279,5 +279,3 @@ class TurretCommandServer(WebSocket):
 
 if __name__ == "__main__":
   main()
-
-
