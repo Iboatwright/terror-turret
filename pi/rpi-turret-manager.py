@@ -256,6 +256,7 @@ class TurretCommandServer(WebSocket):
 
     def handleClose(self):
         print("Closing websocket server...")
+        is_validated = TURRET_CONFIG['validationBypass']
 
 
     def process_incoming_command(self, command):
