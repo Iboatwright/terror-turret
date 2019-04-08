@@ -1,19 +1,31 @@
-package edu.fgcu.terrorturret.viewcontrollers
+package edu.fgcu.scaryturret.viewcontrollers
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Vibrator
-import android.util.Log
-import edu.fgcu.terrorturret.LoggerTags
-import edu.fgcu.terrorturret.R
-import edu.fgcu.terrorturret.network.TurretConnection
-import edu.fgcu.terrorturret.utils.shake
-import edu.fgcu.terrorturret.utils.toast
+import com.gun0912.tedpermission.PermissionListener
+import com.gun0912.tedpermission.TedPermission
+import edu.fgcu.scaryturret.R
+import edu.fgcu.scaryturret.utils.shake
 import kotlinx.android.synthetic.main.activity_turret_connection.*
 
 class TurretConnectionActivity : AppCompatActivity() {
+
+    /**
+     * Used to handle permission request responses.
+     */
+    private var permissionsListener: PermissionListener = object : PermissionListener {
+        override fun onPermissionGranted() {
+            // We're now good to connect - we have the needed permissions
+            saveConnectionInfo()
+            goToTurretControlActivity()
+        }
+
+        override fun onPermissionDenied(deniedPermissions: List<String>) {}
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,12 +42,16 @@ class TurretConnectionActivity : AppCompatActivity() {
         val sharedPreferences = getPreferences(Context.MODE_PRIVATE) ?: return
         with (sharedPreferences) {
             val lastIpUsed = getString(PREF_LAST_IP_USED, "")
-            val lastPortUsed = getString(PREF_LAST_PORT_USED, "")
+            val lastTurretPortUsed = getString(PREF_LAST_TURRET_PORT_USED, "")
+            val lastVideoPortUsed = getString(PREF_LAST_VIDEO_PORT_USED, "")
             val lastPasswordUsed = getString(PREF_LAST_PASSWORD_USED, "")
+            val lastSSLUsed = getBoolean(PREF_LAST_SSL_USED, false)
 
             field_turret_ip.text.append(lastIpUsed)
-            field_turret_port.text.append(lastPortUsed)
+            field_turret_port.text.append(lastTurretPortUsed)
+            field_video_port.text.append(lastVideoPortUsed)
             field_turret_password.text.append(lastPasswordUsed)
+            field_ssl.isChecked = lastSSLUsed
         }
     }
 
@@ -44,33 +60,31 @@ class TurretConnectionActivity : AppCompatActivity() {
      * preferences so that it can be used to prefill the form later.
      */
     private fun saveConnectionInfo() {
-        val sharedPreferences = getPreferences(Context.MODE_PRIVATE)
+        val sharedPreferences = getSharedPreferences("connection_preferences", 0)
         with (sharedPreferences.edit()) {
             val ip = field_turret_ip.text.toString()
-            val port =  field_turret_port.text.toString()
+            val turretPort =  field_turret_port.text.toString()
+            val videoPort = field_video_port.text.toString()
             val password = field_turret_password.text.toString()
+            val ssl = field_ssl.isChecked
 
             putString(PREF_LAST_IP_USED, ip)
-            putString(PREF_LAST_PORT_USED, port)
+            putString(PREF_LAST_TURRET_PORT_USED, turretPort)
+            putString(PREF_LAST_VIDEO_PORT_USED, videoPort)
             putString(PREF_LAST_PASSWORD_USED, password)
+            putBoolean(PREF_LAST_SSL_USED, ssl)
             apply()
         }
     }
 
     private fun onClickConnect() {
         if (validateConnectionInfo()) {
-            try {
-                TurretConnection.init(
-                        field_turret_ip.text.toString(),
-                        field_turret_port.text.toString().toInt(),
-                        field_turret_password.text.toString()
-                )
-                onConnected()
-            } catch (ex: Exception) {
-                toast(R.string.toast_error_connection_failed)
-                Log.e(LoggerTags.LOG_PI_CONNECTION, ex.toString())
-                return
-            }
+            // We request the needed permissions - if they are successful, then we connect
+            TedPermission.with(applicationContext)
+                    .setPermissionListener(permissionsListener)
+                    .setDeniedMessage(getString(R.string.permission_reason_microphone))
+                    .setPermissions(Manifest.permission.RECORD_AUDIO)
+                    .check()
         }
     }
 
@@ -82,11 +96,14 @@ class TurretConnectionActivity : AppCompatActivity() {
      *
      * While it would be nice to have a robust form validation library, it would really be overkill
      * for a simple app like this.
+     *
+     * Note that this function does NOT check whether the credentials provided are correct!
      */
     private fun validateConnectionInfo(): Boolean {
         // Clear any existing errors
         field_turret_ip.error = null
         field_turret_port.error = null
+        field_video_port.error = null
         field_turret_password.error = null
 
         var valid = true
@@ -102,6 +119,11 @@ class TurretConnectionActivity : AppCompatActivity() {
             field_turret_port.error = getString(R.string.validation_error_required_field)
             valid = false
         }
+        if (field_video_port.text.isNullOrEmpty()) {
+            field_video_port.shake()
+            field_video_port.error = getString(R.string.validation_error_required_field)
+            valid = false
+        }
         if (field_turret_password.text.isNullOrEmpty()) {
             field_turret_password.shake()
             field_turret_password.error = getString(R.string.validation_error_required_field)
@@ -115,20 +137,17 @@ class TurretConnectionActivity : AppCompatActivity() {
         return valid
     }
 
-    private fun onConnected() {
-        saveConnectionInfo()
-        goToTurretControlActivity()
-    }
-
     private fun goToTurretControlActivity() {
         val turretControlIntent = Intent(this, TurretControlActivity::class.java)
         startActivity(turretControlIntent)
     }
 
     companion object {
-        private const val PREF_LAST_IP_USED = "PREF_LAST_IP_USED"
-        private const val PREF_LAST_PORT_USED = "PREF_LAST_PORT_USED"
-        private const val PREF_LAST_PASSWORD_USED = "PREF_LAST_PASSWORD_USED"
+        const val PREF_LAST_IP_USED = "PREF_LAST_IP_USED"
+        const val PREF_LAST_TURRET_PORT_USED = "PREF_LAST_TURRET_PORT_USED"
+        const val PREF_LAST_VIDEO_PORT_USED = "PREF_LAST_VIDEO_PORT_USED"
+        const val PREF_LAST_PASSWORD_USED = "PREF_LAST_PASSWORD_USED"
+        const val PREF_LAST_SSL_USED = "PREF_LAST_SSL_USED"
     }
 
 }

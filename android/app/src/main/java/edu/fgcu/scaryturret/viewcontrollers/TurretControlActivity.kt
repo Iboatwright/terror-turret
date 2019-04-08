@@ -1,24 +1,24 @@
-package edu.fgcu.terrorturret.viewcontrollers
+package edu.fgcu.scaryturret.viewcontrollers
 
 import android.content.Context
 import android.media.AudioManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.os.Handler
 import android.util.Log
 import android.view.MotionEvent
 import android.view.WindowManager
-import edu.fgcu.terrorturret.LoggerTags
-import edu.fgcu.terrorturret.R
-import edu.fgcu.terrorturret.applogic.TurretController
-import edu.fgcu.terrorturret.network.TurretConnection
-import edu.fgcu.terrorturret.network.webrtc.WebRtcConnectionManager
-import edu.fgcu.terrorturret.utils.toast
+import edu.fgcu.scaryturret.LoggerTags.LOG_WEBRTC
+import edu.fgcu.scaryturret.R
+import edu.fgcu.scaryturret.turretcontrol.TurretController
+import edu.fgcu.scaryturret.network.TurretConnection
+import edu.fgcu.scaryturret.network.webrtc.WebRtcConnectionManager
+import edu.fgcu.scaryturret.utils.toast
 import kotlinx.android.synthetic.main.activity_turret_control.*
 import org.webrtc.*
 
 class TurretControlActivity : AppCompatActivity(),
-        WebRtcConnectionManager.WebRtcStreamReceiver {
+        WebRtcConnectionManager.WebRtcStreamReceiver,
+        TurretConnection.TurretConnectionStatusListener {
 
     private lateinit var webRtcConnectionManager: WebRtcConnectionManager
 
@@ -27,13 +27,43 @@ class TurretControlActivity : AppCompatActivity(),
         setContentView(R.layout.activity_turret_control)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
+        beginTurretConnection()
+        webRtcConnectionManager = WebRtcConnectionManager(this, this)
+        beginStreamingVideo()
+
         registerClickListeners()
         registerJoystickMovementListener()
         onClickArmSwitch(false)
+    }
 
-        webRtcConnectionManager = WebRtcConnectionManager(this, this)
+    private fun beginTurretConnection() {
+        val sharedPreferences = getSharedPreferences("connection_preferences", 0)
+        with (sharedPreferences) {
+            val turretIp = getString(TurretConnectionActivity.PREF_LAST_IP_USED, "")
+            val turretPort = getString(TurretConnectionActivity.PREF_LAST_TURRET_PORT_USED, "")
+            val videoPort = getString(TurretConnectionActivity.PREF_LAST_VIDEO_PORT_USED, "")
+            val password = getString(TurretConnectionActivity.PREF_LAST_PASSWORD_USED, "")
+            val useSSL = getBoolean(TurretConnectionActivity.PREF_LAST_SSL_USED, false)
 
-        beginStreamingVideo()
+            TurretConnection.init(
+                    turretIp = turretIp!!,
+                    turretPort = turretPort!!.toInt(),
+                    videoPort = videoPort!!.toInt(),
+                    turretPassword = password!!,
+                    protocol = if (useSSL) "wss" else "ws",
+                    turretConnectionStatusListener = this@TurretControlActivity
+            )
+        }
+    }
+
+    /**
+     * Called when the connection to the turret control websocket fails.
+     */
+    override fun onConnectionFailed(msg: String) {
+        runOnUiThread {
+            toast(R.string.toast_error_turret_connection_failed)
+            finish()
+        }
     }
 
     override fun onDestroy() {
@@ -44,24 +74,16 @@ class TurretControlActivity : AppCompatActivity(),
     private fun beginStreamingVideo() {
         video_view.init(webRtcConnectionManager.rootEglBase.eglBaseContext, null)
 
+        val webRtcProtocol = TurretConnection.protocol
         val webRtcIp = TurretConnection.turretIp
-        val webRtcPort = TurretConnection.turretPort
+        val webRtcPort = TurretConnection.videoPort
 
-        try {
-            webRtcConnectionManager.connect(webRtcIp, webRtcPort)
-        } catch (ex: Exception) {
-            toast(R.string.toast_error_video_stream_failed)
-            Log.e(LoggerTags.LOG_WEBRTC, ex.toString())
-            Handler().postDelayed(
-            {
-                finish()
-            },
-            400)
-        }
+        webRtcConnectionManager.connect(webRtcProtocol, webRtcIp, webRtcPort)
 
         enableSpeakerphone()
     }
 
+    // TODO ability to mute remote audio stream
     override fun onStreamReady(mediaStream: MediaStream) {
         val videoTrack = mediaStream.videoTracks[0]
         val audioTrack = mediaStream.audioTracks[0]
@@ -71,8 +93,20 @@ class TurretControlActivity : AppCompatActivity(),
                 videoTrack.addSink(video_view)
             } catch (ex: Exception) {
                 toast(R.string.toast_error_video_stream_failed)
-                Log.e(LoggerTags.LOG_WEBRTC, ex.toString())
+                Log.e(LOG_WEBRTC, ex.toString())
             }
+        }
+    }
+
+    /**
+     * Called when connecting to the signalling server fails.
+     *
+     * Displays a toast with an error message, and returns to the previous screen.
+     */
+    override fun onSignallingConnectionFailed(msg: String) {
+        runOnUiThread {
+            toast(getString(R.string.toast_error_signaller_connection_failed))
+            finish()
         }
     }
 
@@ -87,14 +121,13 @@ class TurretControlActivity : AppCompatActivity(),
         audioManager.isSpeakerphoneOn = true
     }
 
+    // TODO fun to disable speakerphone
+
     private fun registerJoystickMovementListener() {
         analog_stick.setOnMoveListener({ angle, strength ->
             // Strength is a percentage value [0, 100]
             // Angle is degrees measured from the right, counterclockwise.
-
             // We need to convert this to a normalized value [0, 1] in (x,y) coordinates
-            // I don't have time to rewrite the library to allow this, so for now this is how we
-            // do it, but ideally this functionality should be baked in to the library
 
             val angleInRadians = Math.toRadians(angle.toDouble())
             val normalizedX = (strength / 100.0) * Math.cos(angleInRadians)
@@ -141,7 +174,7 @@ class TurretControlActivity : AppCompatActivity(),
     }
 
     companion object {
-        const val JOYSTICK_UPDATE_FREQ_HZ = 10
+        const val JOYSTICK_UPDATE_FREQ_HZ = 20
     }
 
 }
