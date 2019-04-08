@@ -37,26 +37,20 @@ android {
     useLibrary 'android.test.mock'
 }
 
-kotlin {
-    experimental {
-        coroutines 'enable'
-    }
-}
-
 dependencies {
     // Include bundled libraries
     implementation fileTree(include: ['*.jar'], dir: 'libs')
 
     // Official Kotlin features and dependencies
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:0.25.0'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:0.25.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:0.27.0-eap13'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:0.27.0-eap13'
 
     // Official androidx components
     implementation 'androidx.appcompat:appcompat:1.0.2'
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'
-    implementation 'androidx.media:media:1.0.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.0.0-alpha2'
+    implementation 'androidx.media:media:1.0.1'
+    implementation 'androidx.constraintlayout:constraintlayout:2.0.0-alpha3'
 
     // UI Components
     implementation 'com.google.android.material:material:1.0.0'
