@@ -4,7 +4,7 @@ TURRET_CONFIG = {
   'useSSL': True,
   'validationBypass': True,
   'password': "Z",
-  'commandServerPort': 9001,
+  'webSocketPort': 9001,
   'certFile': '/etc/uv4l/fullchain.pem',
   'keyFile': '/etc/uv4l/privkey.key'
 }

@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
-# This Python program is the main Rpi control program for the turret
-
+# Python server to manage the turret
 
 import os.path
 import sys
@@ -26,7 +25,6 @@ else:
     from SimpleWebSocketServer import SimpleSSLWebSocketServer
 
 SERIAL_BAUD_RATE = TURRET_CONFIG['baudrate'] #9600
-turret_serial_port = TURRET_CONFIG['serialPort'] #'ttyUSB0'
 
 CMD_FIRE = 0x21
 CMD_STOP_FIRE = 0x22
@@ -52,7 +50,7 @@ def main():
     colorama.init()
     parse_command_line_arguments()
     print("\nTurret manager software started.\n")
-    if (not noTurret):
+    if (not TURRET_CONFIG['noTurret']):
         establish_connection_to_turret()
 
     logging_thread = Thread(target = SerialLoggingThread)
@@ -65,7 +63,7 @@ def main():
 
     # Lets the user know the gun is ready
     # Doing it after the server is ready is much harder due to threading sadly
-    play_shotgun_racking_sound()
+    play_turret_ready_sound()
     init_incoming_commands_server()
     cleanup()
     exit(0)
@@ -80,7 +78,7 @@ def parse_command_line_arguments():
         dest = 'testmode',
         help = "Runs the test script instead of normal program")
     parser.add_argument(
-        '-p', '--serial-port',
+        '-s', '--serial-port',
         action = 'store_const',
         const = '/dev/ttyUSB0',
         default = '/dev/ttyUSB0',
@@ -91,16 +89,26 @@ def parse_command_line_arguments():
         action = 'store_true',
         dest = 'noturret',
         help = "Runs without creating a serial connection.")
+    parser.add_argument(
+        '-p', '--port',
+        action = 'store_const',
+        const = 9001,
+        default = 9001,
+        dest = 'port',
+        help = "The port the websocket server will listen on.")
     parsed_args = parser.parse_args()
 
     global testmode
     testmode = parsed_args.testmode
 
-    global turret_serial_port
-    turret_serial_port = parsed_args.serialport
-    
-    global no_turret
-    no_turret = parsed_args.noturret
+    if parsed_args.serialport != '/dev/ttyUSB0':
+         TURRET_CONFIG['serialPort']=parsed_args.serialport
+
+    if parsed_args.noturret == True:
+         TURRET_CONFIG['noTurret']=True
+
+    if parsed_args.port != 9001:
+         TURRET_CONFIG['webSocketPort']=parsed_args.port
 
 
 def cleanup():
@@ -119,23 +127,23 @@ def establish_connection_to_turret():
         print(str(port))
     print("")
 
-    print("Attempting to connect to turret on " + turret_serial_port + "...")
+    print("Attempting to connect to turret on " + TURRET_CONFIG['serialPort'] + "...")
     try:
         # The serial port takes some time to init 
         arduino_serial_conn.baudrate = SERIAL_BAUD_RATE
-        arduino_serial_conn.port = turret_serial_port
+        arduino_serial_conn.port = TURRET_CONFIG['serialPort']
         arduino_serial_conn.timeout = 2
         arduino_serial_conn.close()
         arduino_serial_conn.open()
         sleep(3)
         print("Connection established")
     except serial.SerialException as e:
-        crash("Failed to connect to turret on " + str(turret_serial_port) + "\n\n" + str(e))
+        crash("Failed to connect to turret on " + str(TURRET_CONFIG['serialPort']) + "\n\n" + str(e))
 
 
 def command_turret(command):
     print("Sending command: " + hex(command))
-    if (not no_turret):
+    if (not TURRET_CONFIG['noTurret']):
         arduino_serial_conn.write(chr(command).encode())
     
 
@@ -194,7 +202,7 @@ def test_turret_commands():
 def init_incoming_commands_server():
     global command_server
     print("Initializing incoming commands server...\n")
-    port = TURRET_CONFIG['commandServerPort'] # default is 9001
+    port = TURRET_CONFIG['webSocketPort'] # default is 9001
     
     if (TURRET_CONFIG['useSSL'] is False):
         command_server = SimpleWebSocketServer('', port, TurretCommandServer)
@@ -205,9 +213,9 @@ def init_incoming_commands_server():
  
     command_server.serveforever()
 
-# need to move the audio files to a permanent location (/etc/terror-turret/???)
-def play_shotgun_racking_sound():
-    play_sound('/home/pi/code/terror-turret/pi/shotgun_racking.wav')
+# turret_ready.wav is a symlink that can be changed to use a different sound
+def play_turret_ready_sound():
+    play_sound('/usr/share/terror-turret/turret_ready.wav')
 
 def play_sound(file_name):
     os.system("omxplayer " + file_name)
