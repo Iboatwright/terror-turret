@@ -104,7 +104,7 @@ set_port() {
       sed -E -i "s/(^server-option = --www-port=)([0-9]+)/\1${port}/" \
         /usr/share/${project_name}/uv4l-config.conf || exiterror;;
     manager) 
-      sed -E -i "s/(commandServerPort\x27\s*:\s*)([0-9]+)/\1${port}/" \
+      sed -E -i "s/(webSocketPort\x27\s*:\s*)([0-9]+)/\1${port}/" \
         /usr/share/${project_name}/turretManagerConfig.conf || exiterror;;
     *) exiterror "please enter a valid service and port number";;  # default
   esac
@@ -125,6 +125,18 @@ set_ssl() {
   # change the value of use_ssl in uv4l_uvc.conf
   sed -E -i "s/(use-ssl=)(.*)/\1${use_ssl}/g" \
     /usr/share/${project_name}/uv4l-config.conf || exiterror
+}
+
+# change the sound file played when the turret loads
+set_turret_ready_sound(){
+  SOUND_LN="/usr/share/$project_name/turret_ready.wav"
+  [[ -z "$1" ]] && exiterror "please enter a valid audio file"
+
+  # get the full path to the file
+  [[ -e "$1" ]] && new_sound=$(readlink -f $1) || exiterror
+
+  # set the turret_ready symlink to the new file
+  sudo ln -s $new_sound $SOUND_LN 
 }
 
 # this might not be needed. I think the service auto-loads based on what's
