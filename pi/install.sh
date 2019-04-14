@@ -115,8 +115,8 @@ sed -E -i 's/(password\x27\s*:\s*")(\w*)/\1${password}/g' $TMP_DIR/pi/turretMana
 
 # install turret documents
 cp $TMP_DIR/LICENSE $DOC_DIR/LICENSE
-cp $TMP_DIR/README.md $DOC_DIR/$PROJECT_NAME-about.md
-cp $TMP_DIR/pi/README.md $DOC_DIR/$PROJECT_NAME-tls.md
+cp $TMP_DIR/README.md $DOC_DIR/$project_name-about.md
+cp $TMP_DIR/pi/README.md $DOC_DIR/$project_name-tls.md
 
 # install control scripts
 cp $TMP_DIR/pi/turret-manager.py $INSTALL_DIR/turret-manager.py
@@ -125,15 +125,17 @@ cp $TMP_DIR/pi/turret $INSTALL_DIR/turret
 cp $TMP_DIR/pi/uv4l-config.conf $INSTALL_DIR/uv4l-config.conf
 sudo cp $TMP_DIR/pi/turret.service /etc/systemd/system/turret.service
 sudo mv /etc/uv4l/uv4l-uvc.conf /etc/uv4l/uv4l-uvc.conf.bak
+cp $TMP_DIR/pi/shotgun_racking.wav $INSTALL_DIR/shotgun_racking.wav
 
 # update needed permissions
 chmod +x $INSTALL_DIR/turret
-sudo chmod 644 /etc/systemd/system/$PROJECT_NAME.service
+sudo chmod 644 /etc/systemd/system/$project_name.service
 
 # symlink config files
 sudo ln -s $INSTALL_DIR/turretManagerConfig.py $CONFIG_DIR/turretManagerConfig.py
 sudo ln -s $INSTALL_DIR/turret /usr/local/bin/turret
 sudo ln -s $INSTALL_DIR/uv4l-config.conf /etc/uv4l/uv4l-uvc.conf
+sudo ln -s $INSTALL_DIR/shotgun_racking.wav $INSTALL_DIR/turret_ready.wav
 
 # start the turret service 
 sudo systemctrl daemon-reload
