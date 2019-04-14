@@ -1,0 +1,11 @@
+[Unit]
+Description=Python3 server for controlling the turret
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /etc/terror-turret/turret-manager.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,147 @@
+#!/bin/bash
+# version: 0.4.14.19
+# Tool for managing turret services and settings.
+
+project_name="terror-turret"
+IS_INTEGER="^[0-9]+$"
+
+# Colors that can be used in the output
+OUTPUT_RED='\033[0;31m'
+OUTPUT_GREEN='\033[0;32m'
+OUTPUT_NO_COLOR='\033[039m'
+
+# Prints the provided string red to indicate an error
+error() {
+  printf "${OUTPUT_RED}"
+  printf "$@\n"
+  printf "${OUTPUT_NO_COLOR}"
+}
+
+# Just like error(), but exits with exit code 1
+exiterror()
+{
+  local errMsg
+  [[ -z "$1" ]] && errMsg="An error has occurred. turret is terminating." || errMsg="$@"
+  error "$errMsg";
+  exit 1;
+}
+
+# TODO: parse input and call methods as requested
+parse_args(){
+
+}
+
+# TODO: tell the user how to use this tool
+print_help(){
+  # Command List: []
+}
+
+# checks every half-second if all the uv4l processes are stopped
+stop_uv4l_server() {
+  num_running=$(pgrep -f -c turret-manager)
+  oldest=$(pgrep -f -o turret-manager)
+  
+  while [ $num_running -gt 0 ]; do
+    current=$oldest
+    sudo /bin/kill $oldest
+  
+    while [ ! -z $oldest ] && [ $current -eq $oldest ]; do
+      sleep .5
+      oldest=$(pgrep -f -o turret-manager)
+      pgrep -f -o turret-manager
+    done
+  
+    num_running=$(pgrep -f -c turret-manager)
+  done
+}
+
+# Start UV4L video streaming server
+start_uv4l_server() {
+  uv4l --driver uvc \
+    --config-file "/etc/uv4l/uv4l-uvc.conf" \
+    --driver-config-file "/etc/uv4l/uv4l-uvc.conf" \
+    "$@"
+}
+
+turret_manager_service() { # stop/start/restart/enable/disable
+  sudo systemctl $1 ${project_name}.service || exiterror
+}
+
+# $1 = account (default=admin-) # change all by passing just a hyphen '-' 
+# $2 = new_password
+# there are 4 passwords in uv4l-uvc.conf [admin-, user-, www-, config-]
+set_password() {
+  [[ -z $1 ]] && account="-" || account=$1
+
+  if [ -z $2 ]; then
+    password_prompt="[${account} password]: "
+    read -sp $password_prompt new_password
+  else
+    new_password=$2
+  fi
+
+  if [ $account .eq "manager" ]; then
+    sed -E -i "s/(password\x27\s*:\s*\")(\w*)/\1${new_password}/" \
+      /usr/share/${project_name}/turretManagerConfig.conf || exiterror
+  else
+    sed -E -i "s/(${account}password=)(.*)/\1${new_password}/g" \
+      /usr/share/${project_name}/uv4l-config.conf || exiterror
+  fi
+}
+
+set_port() {
+  local service, port
+  # error checking
+  [[ -z "$1" ]] && $service=$1 || exiterror "please enter a service and port"
+  [[ -z "$2" ]] && [[ $2 =~ $IS_INTEGER ]] && $port=$2 || exiterror "invalid port"
+  [[ $((65536 - $port)) -gt 0 ]] || exiterror "Please enter a valid port number"
+
+  case $service in
+    uv4l) 
+      sed -E -i "s/(^server-option = --port=)([0-9]+)/\1${port}/" \
+        /usr/share/${project_name}/uv4l-config.conf || exiterror;;
+    www) 
+      sed -E -i "s/(^server-option = --www-port=)([0-9]+)/\1${port}/" \
+        /usr/share/${project_name}/uv4l-config.conf || exiterror;;
+    manager) 
+      sed -E -i "s/(commandServerPort\x27\s*:\s*)([0-9]+)/\1${port}/" \
+        /usr/share/${project_name}/turretManagerConfig.conf || exiterror;;
+    *) exiterror "please enter a valid service and port number";;  # default
+  esac
+}
+
+# Toggles the use of SSL/TLS to yes/true or no/false for both services
+set_ssl() {
+  if [ $1 -eq 'yes' ]; then
+    state="True"; use_ssl="yes";
+  else
+    state="False"; use_ssl="no";
+  fi
+
+  # change the state in the turretManagerConfig
+  sed -E -i "s/(useSSL\x27\s*:\s*)(\w+)/\1${state}/" \
+    /usr/share/${project_name}/turretManagerConfig.py || exiterror
+  
+  # change the value of use_ssl in uv4l_uvc.conf
+  sed -E -i "s/(use-ssl=)(.*)/\1${use_ssl}/g" \
+    /usr/share/${project_name}/uv4l-config.conf || exiterror
+}
+
+# this might not be needed. I think the service auto-loads based on what's
+# currently plugged in.
+set_camera(){
+  # inline option will check the device-id for valid format and 
+  #   update uv4l-uvc.conf
+  # interactive will display lsusb and prompt to enter a device-id
+
+  # lsusb | awk '{ print $6 }' # all the usb device-ids in order. need to convert
+  #   to a list. I think there's a split command or can use sed with back references.
+
+  # lsusb | awk -F "ID " '{ print $2 }' # device-ids followed by descriptions
+  #   can split this and use it as the display with a numbered list to select from
+}
+########
+# Main #
+########
+
+# TODO: make it do stuff
