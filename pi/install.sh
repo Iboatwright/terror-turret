@@ -1,7 +1,10 @@
 #!/bin/bash
 # version: 0.4.14.19
 
-# This script sets up the Raspberry Pi 3B+ as needed for our project
+# This script performs a fresh install of the turret's Linux software.
+# The turret software has only been tested on a Raspberry Pi 3B+ running
+# Raspbian 9 Stretch, but it should work with other Debian based systems.
+# See https://github.com/iboatwright/terror-turret/pi/README.md for more details.
 
 starttime=$(date +%s)
 DEFAULT_PROJECT_NAME="terror-turret"
@@ -11,6 +14,16 @@ BASE_PACKAGES="git python-pip"
 UV4L_PACKAGES="uv4l uv4l-decoder uv4l-encoder uv4l-renderer "\
               "uv4l-mjpegstream uv4l-server uv4l-webrtc"\
               "uv4l-demos uv4l-uvc"
+quiet=false
+prompts=true
+
+# if -q is passed as an argument, then perform a quiet install. No prompts, 
+#   no prints. Output is redirected to /tmp/turret_install.log
+[[ ! -z $1 ]] && [[ $1 -eq "-q" ]] && quiet=true && prompts=false
+[[ $quiet ]] && exec &> /tmp/turret_install.log
+
+# if -d is passed as an argument, then use default settings. No prompts.
+[[ ! -z $1 ]] && [[ $1 -eq "-d" ]] && prompts="False"
 
 # Colors that can be used in the output
 OUTPUT_RED='\033[0;31m'
