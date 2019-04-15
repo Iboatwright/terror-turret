@@ -1,5 +1,44 @@
 # RPi install and configuration details
 
+## How to perform a fresh install
+The Terror-Turret has only been tested on the Raspberry Pi 3B+ running 
+Raspbian 9 Stretch. Many of the tools rely on the target system having the 
+bash shell available and the root password disabled for sudo.
+1. Download the install.sh script from the terror-turret/pi repo directory.
+2. [Optional] Edit the install.sh file and change the __DEFAULT_PROJECT_NAME__
+and/or the __DEFAULT_PASSWORD__.
+3. Run the install script:
+```$ bash install.sh```
+There are two optional parameters you can use with the install script. `-d` will
+skip input prompts and select the default values. `-q` will set _-d_ and redirect
+all output to a log file `/tmp/turret_install.log`
+4. Unless skipped the last step is to respond to the prompts for a project name 
+and a turret password.
+
+After the system reboots the turret should be ready for use. 
+
+**Please note:** The installer does not fail gracefully. If there is a problem, 
+the script will exit at that point, but will not roll-back previous actions.
+After you correct the issue, you should be able to run the script again.
+Otherwise you can use the install script as a guide on what to do to
+finish the install.
+
+## Configuring the Turret software
+There are a number of configuration options available. The two primary config
+files (post-install) are `/usr/share/${project_name}/turretManagerConfig.py`
+and `/usr/share/${project_name}/uv4l-config.conf`. Where ${project_name}
+defaults to __terror-turret__. These files can be editted by hand or using the
+`turret` commandline tool.
+
+### turretManagerConfig.py
+This file controls the Python Websocket Server startup parameters. Please
+examine the file at `/usr/share/${project_name}/turretManagerConfig.py` to see
+the specific options.
+
+### uv4l-config.conf
+This file sets the options for the video and audio streaming server. 
+
+
 ## How to enable SSL for your turret
 The basic steps are:
 1. Get SSL/TLS certificate
@@ -31,6 +70,3 @@ Letsencrypt expects one of the subdomains used to resolve to a public webpage. I
 ## Copy Certificate to Turret Server
 If you ran certbot on your turret server you can skip this step. Certbot displayed the path to your cert files when it finished running. Usually they are in the `/etc/letsencrypt/live/<domain>/` folder as symlinks. To copy them though, they are in the `/etc/letsencrypt/archive/<domain>/` folder. The folder is owned by root, so you'll need elevated privledges to get the files. Every time you renew your certs the new files are stored in this folder with a number appended to the filename. The most recent certificate will have the highest number. 
 To copy the cert files to the turret server you'll need to copy the `cert#.pem`, `fullchain#.pem`, and `privkey#.pem` files. Please note, you need to keep the privkey.pem file a secret. If need you can zip the pem files or even encrypt them for transport. Or just use something like SCP or SFTP. On the turret server save the files in the `/etc/uv4l/` folder (_if you ran certbot on the server, leave them in letsencrypt folder_).
-
-## Configure Turret Server
-TODO: uv4l-config.conf and turretManagerConfig.py 
