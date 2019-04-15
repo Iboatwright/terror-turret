@@ -27,7 +27,7 @@ finish the install.
 There are a number of configuration options available. The two primary config
 files (post-install) are `/usr/share/${project_name}/turretManagerConfig.py`
 and `/usr/share/${project_name}/uv4l-config.conf`. Where ${project_name}
-defaults to __terror-turret__. These files can be editted by hand or using the
+defaults to __terror-turret__. These files can be edited by hand or using the
 `turret` commandline tool.
 
 ### turretManagerConfig.py
@@ -38,6 +38,9 @@ the specific options.
 ### uv4l-config.conf
 This file sets the options for the video and audio streaming server. 
 
+### turret
+This is the commandline tool for managing the turret system. To see a list of
+commands, `$ turret --help`.
 
 ## How to enable SSL for your turret
 The basic steps are:
