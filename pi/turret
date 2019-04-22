@@ -1,5 +1,5 @@
 #!/bin/bash
-# version: 0.4.14.19
+version=0.4.14.19
 # Tool for managing turret services and settings.
 
 project_name="terror-turret"
@@ -28,12 +28,39 @@ exiterror()
 
 # TODO: parse input and call methods as requested
 parse_args(){
+  while [[ "$1" =~ ^- && ! "$1" == "--" ]]; do case $1 in
+    -V | --version )
+      echo $version
+      exit
+      ;;
+    -s | --string )
+      shift; string=$1
+      ;;
+    -f | --flag )
+      flag=1
+      ;;
+  esac; shift; done
+  if [[ "$1" == '--' ]]; then shift; fi
+}
 
+usage(){
+  echo "Usage: turret <action> [...] <service> [...] (options)"
 }
 
 # TODO: tell the user how to use this tool
-print_help(){
-  # Command List: []
+showHelp() {
+  usage
+# `cat << EOF` This means that cat should stop reading when EOF is detected
+cat << EOF  
+Manage turret services and settings
+
+-h, -help,          --help                  Display help
+
+-v
+
+EOF
+# EOF is found above and hence cat command stops reading. This is equivalent 
+#   to echo but much neater when printing out.
 }
 
 # checks every half-second if all the uv4l processes are stopped
@@ -152,8 +179,14 @@ set_camera(){
   # lsusb | awk -F "ID " '{ print $2 }' # device-ids followed by descriptions
   #   can split this and use it as the display with a numbered list to select from
 }
+
+
 ########
 # Main #
 ########
+main() {
+
+}
 
 # TODO: make it do stuff
+main "$@"
