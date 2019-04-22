@@ -5,6 +5,7 @@
 import os.path
 import sys
 import argparse
+
 import serial
 import serial.tools.list_ports
 from threading import Thread
@@ -19,12 +20,12 @@ if os.path.isfile("/etc/terror-turret/turretManagerConfig.py"):
 from turretManagerConfig import TURRET_CONFIG
 
 # no SSL support or yes SSL support...
-if (TURRET_CONFIG['useSSL'] is False):
+if TURRET_CONFIG['useSSL'] is False:
     from SimpleWebSocketServer import SimpleWebSocketServer
 else:
     from SimpleWebSocketServer import SimpleSSLWebSocketServer
 
-SERIAL_BAUD_RATE = TURRET_CONFIG['baudrate'] #9600
+SERIAL_BAUD_RATE = TURRET_CONFIG['baudrate']  # 9600
 
 CMD_FIRE = 0x21
 CMD_STOP_FIRE = 0x22
@@ -50,10 +51,10 @@ def main():
     colorama.init()
     parse_command_line_arguments()
     print("\nTurret manager software started.\n")
-    if (not TURRET_CONFIG['noTurret']):
+    if not TURRET_CONFIG['noTurret']:
         establish_connection_to_turret()
 
-    logging_thread = Thread(target = SerialLoggingThread)
+    logging_thread = Thread(target=serial_logging_thread)
     logging_thread.start()
 
     if testmode:
@@ -71,44 +72,44 @@ def main():
 
 def parse_command_line_arguments():
     program_description = "Main control software for the Terror Turret."
-    parser = argparse.ArgumentParser(description = program_description)
+    parser = argparse.ArgumentParser(description=program_description)
     parser.add_argument(
         '-t', '--test-mode',
-        action = 'store_true',
-        dest = 'testmode',
-        help = "Runs the test script instead of normal program")
+        action='store_true',
+        dest='testmode',
+        help="Runs the test script instead of normal program")
     parser.add_argument(
         '-s', '--serial-port',
-        action = 'store_const',
-        const = '/dev/ttyUSB0',
-        default = '/dev/ttyUSB0',
-        dest = 'serialport',
-        help = "The name of the serial port to connect from.")
+        action='store_const',
+        const='/dev/ttyUSB0',
+        default='/dev/ttyUSB0',
+        dest='serialport',
+        help="The name of the serial port to connect from.")
     parser.add_argument(
         '-n', '--no-turret',
-        action = 'store_true',
-        dest = 'noturret',
-        help = "Runs without creating a serial connection.")
+        action='store_true',
+        dest='noturret',
+        help="Runs without creating a serial connection.")
     parser.add_argument(
         '-p', '--port',
-        action = 'store_const',
-        const = 9001,
-        default = 9001,
-        dest = 'port',
-        help = "The port the websocket server will listen on.")
+        action='store_const',
+        const=9001,
+        default=9001,
+        dest='port',
+        help="The port the websocket server will listen on.")
     parsed_args = parser.parse_args()
 
     global testmode
     testmode = parsed_args.testmode
 
     if parsed_args.serialport != '/dev/ttyUSB0':
-         TURRET_CONFIG['serialPort']=parsed_args.serialport
+        TURRET_CONFIG['serialPort'] = parsed_args.serialport
 
-    if parsed_args.noturret == True:
-         TURRET_CONFIG['noTurret']=True
+    if parsed_args.noturret:
+        TURRET_CONFIG['noTurret'] = True
 
     if parsed_args.port != 9001:
-         TURRET_CONFIG['webSocketPort']=parsed_args.port
+        TURRET_CONFIG['webSocketPort'] = parsed_args.port
 
 
 def cleanup():
@@ -143,9 +144,9 @@ def establish_connection_to_turret():
 
 def command_turret(command):
     print("Sending command: " + hex(command))
-    if (not TURRET_CONFIG['noTurret']):
+    if not TURRET_CONFIG['noTurret']:
         arduino_serial_conn.write(chr(command).encode())
-    
+
 
 def test_turret_commands():
     print("\nInitiating turret commands test...\n")
@@ -195,27 +196,29 @@ def test_turret_commands():
     print("Turning safety back on")
     command_turret(CMD_SAFETY_ON)
     sleep(2)
-    
+
     print("Test complete. Exiting program.")
 
 
 def init_incoming_commands_server():
     global command_server
     print("Initializing incoming commands server...\n")
-    port = TURRET_CONFIG['webSocketPort'] # default is 9001
-    
-    if (TURRET_CONFIG['useSSL'] is False):
+    port = TURRET_CONFIG['webSocketPort']  # default is 9001
+
+    if TURRET_CONFIG['useSSL'] is False:
         command_server = SimpleWebSocketServer('', port, TurretCommandServer)
     else:
-        certFile=TURRET_CONFIG['certFile']
-        keyFile=TURRET_CONFIG['keyFile']
+        certFile = TURRET_CONFIG['certFile']
+        keyFile = TURRET_CONFIG['keyFile']
         command_server = SimpleSSLWebSocketServer('', port, TurretCommandServer, certfile=certFile, keyfile=keyFile)
- 
+
     command_server.serveforever()
+
 
 # turret_ready.wav is a symlink that can be changed to use a different sound
 def play_turret_ready_sound():
     play_sound('/usr/share/terror-turret/turret_ready.wav')
+
 
 def play_sound(file_name):
     os.system("omxplayer " + file_name)
@@ -227,7 +230,7 @@ def crash(reason):
     exit(1)
 
 
-def SerialLoggingThread():
+def serial_logging_thread():
     print("Beginning turret output logging...\n")
     while not exiting:
         if arduino_serial_conn.isOpen():
@@ -239,44 +242,39 @@ def SerialLoggingThread():
 
 
 class TurretCommandServer(WebSocket):
-    
     IN_CMD_FIRE = "FIRE"
     IN_CMD_CEASE_FIRE = "CEASE FIRE"
     IN_CMD_SAFETY_ON = "SAFETY ON"
     IN_CMD_SAFETY_OFF = "SAFETY OFF"
     IN_CMD_ROTATE = "ROTATE SPEED"
     IN_CMD_PITCH = "PITCH SPEED"
-    is_validated = TURRET_CONFIG['validationBypass'] # True skips validation
-
+    is_validated = TURRET_CONFIG['validationBypass']  # True skips validation
 
     def handleMessage(self):
-        if is_validated:
+        if self.is_validated:
             incoming_command = self.data
             print("Incoming command: " + incoming_command)
             self.process_incoming_command(incoming_command)
         else:
-            validate_client(self)
-
+            TurretCommandServer.validate_client(self)
 
     def handleConnected(self):
         print("Client connected to command server.")
 
-
     def handleClose(self):
         print("Closing websocket server...")
-        is_validated = TURRET_CONFIG['validationBypass']
-
+        self.is_validated = TURRET_CONFIG['validationBypass']
 
     def process_incoming_command(self, command):
-        if (command == self.IN_CMD_FIRE):
+        if command == self.IN_CMD_FIRE:
             command_turret(CMD_FIRE)
-        elif (command == self.IN_CMD_CEASE_FIRE):
+        elif command == self.IN_CMD_CEASE_FIRE:
             command_turret(CMD_STOP_FIRE)
-        elif (command == self.IN_CMD_SAFETY_ON):
+        elif command == self.IN_CMD_SAFETY_ON:
             command_turret(CMD_SAFETY_ON)
-        elif (command == self.IN_CMD_SAFETY_OFF):
+        elif command == self.IN_CMD_SAFETY_OFF:
             command_turret(CMD_SAFETY_OFF)
-        elif (command.startswith(self.IN_CMD_ROTATE)):
+        elif command.startswith(self.IN_CMD_ROTATE):
             speed = command.split(' ')[2]
             command_turret(CMD_ROTATE_ZERO + int(speed))
         elif command.startswith(self.IN_CMD_PITCH):
@@ -289,13 +287,14 @@ class TurretCommandServer(WebSocket):
         incoming_password = self.data
         print("Authenticating Client.")
         if incoming_password == TURRET_CONFIG['password']:
-            is_validated = True
+            self.is_validated = True
             print("Client is validated.")
             self.sendMessage('Login successful')
         else:
             print("Client used an invalid password.\nTerminating connection.\n")
             self.sendMessage('Invalid password.')
-            self.sendClose(self)
+            self.close(self)
+
 
 if __name__ == "__main__":
     main()
